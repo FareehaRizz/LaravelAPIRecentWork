@@ -248,4 +248,50 @@ class UserController extends Controller
             // Return JSON response
             return response()->json($response);
         }
+
+        //the method below fetches data and shows the charts with data , in terms of trends..ill be using his method as an API function for the "trends" module
+
+        
+
+/*public function trends() {
+    $device_id = isset($_GET['device_id']) ? $_GET['device_id'] : 'default_device_id';
+    $time_range = isset($_GET['time_range']) ? $_GET['time_range'] : 'default_time_range';
+}*/
+
+public function trends(Request $request) {
+    // Check if the device ID is provided
+    if (!$request->has('device_id')) {
+        return response()->json(['error' => 'Device ID is missing'], 400);
+    }
+
+    
+    $readings = DB::table('readings')
+        ->where('device_id', $request->device_id)
+        ->whereBetween('created_at', [$startTime, $endTime]) 
+        ->orderBy('created_at')
+        ->get();
+
+    $chartData = [];
+    foreach ($readings as $reading) {
+        $chartData[] = [
+            "timestamp" => $reading->created_at,
+            "value" => $reading->value,
+           
+        ];
+    }
+
+    // Format data into JSON response
+    $response = [
+        "chartData" => $chartData,
+        
+    ];
+
+    // Return JSON response
+    return response()->json($response);
+}
+
+
+
+
+
 }

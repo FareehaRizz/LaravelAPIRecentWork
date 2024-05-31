@@ -164,51 +164,8 @@ class UserController extends Controller
 
         }
 
+       
        /* public function liveMonitoring(Request $request) {
-            global $PDO; // Assuming $PDO is the database connection object
-    
-            // Check if the device ID is provided
-            if (!$request->has('deviceId')) {
-                return response()->json(['error' => 'Device ID is missing'], 400);
-            }
-    
-            // Fetch real-time data from the database
-            $stmt = $PDO->prepare("SELECT * FROM `readings` WHERE `device_id` = :deviceId ORDER BY `id` DESC LIMIT 1");
-            $stmt->execute(array(':deviceId' => $request->deviceId));
-            $array = $stmt->fetch();
-    
-            // Handle case when power factor average is null
-            if ($array['powerfactorAverage'] === null) {
-                $array['powerfactorAverage'] = ($array['powerfactorPhaseR'] + $array['powerfactorPhaseY'] + $array['powerfactorPhaseB']) / 3;
-            }
-    
-            // Format data into JSON response
-            $response = [
-                "gaugeChartCols" => [
-                    ["id" => "", "label" => "Label", "pattern" => "", "type" => "string"],
-                    ["id" => "", "label" => "Value", "pattern" => "", "type" => "number"]
-                ],
-                "gaugeChartRows" => [
-                    [
-                        "c" => [
-                            ["v" => "Voltage", "f" => null],
-                            [
-                                "v" => round($array['averageLineNeutralVoltage'], 2),
-                                "f" => number_format($array['averageLineNeutralVoltage'], 0) . " V"
-                            ]
-                        ]
-                    ],
-                    // Format other rows as needed
-                ],
-                // Include other sections of data (comboChartRows, lineChartRows, extras) similarly
-                // Handle errors or missing data appropriately
-            ];
-    
-            // Return JSON response
-            return response()->json($response);
-        }*/
-
-        public function liveMonitoring(Request $request) {
             // Check if the device ID is provided
             if (!$request->has('deviceId')) {
                 return response()->json(['error' => 'Device ID is missing'], 400);
@@ -216,7 +173,7 @@ class UserController extends Controller
     
             // Fetch real-time data from the database using Laravel's query builder
             $reading = DB::table('readings')
-                ->where('device_id', $request->deviceId)
+                ->where('device_id', $request->input(deviceId))
                 ->orderByDesc('id')
                 ->first();
     
@@ -247,10 +204,48 @@ class UserController extends Controller
     
             // Return JSON response
             return response()->json($response);
-        }
+        }*/
 
         //the method below fetches data and shows the charts with data , in terms of trends..ill be using his method as an API function for the "trends" module
 
+        // defines a new method for liveMoitoring API without dealing with the deviceId
+
+        public function liveMonitoring(Request $request) {
+            // Fetch real-time data from the database using Laravel's query builder
+            $reading = DB::table('readings')
+                ->orderByDesc('id')
+                ->first();
+        
+            // If no reading is found
+            if (!$reading) {
+                return response()->json(['error' => 'No data available'], 404);
+            }
+        
+            // Format data into JSON response
+            $response = [
+                "gaugeChartCols" => [
+                    ["id" => "", "label" => "Label", "pattern" => "", "type" => "string"],
+                    ["id" => "", "label" => "Value", "pattern" => "", "type" => "number"]
+                ],
+                "gaugeChartRows" => [
+                    [
+                        "c" => [
+                            ["v" => "Voltage", "f" => null],
+                            [
+                                "v" => round($reading->averageLineNeutralVoltage, 2),
+                                "f" => number_format($reading->averageLineNeutralVoltage, 0) . " V"
+                            ]
+                        ]
+                    ],
+                    // Format other rows as needed
+                ],
+                // Include other sections of data (comboChartRows, lineChartRows, extras) similarly
+                // Handle errors or missing data appropriately
+            ];
+        
+            // Return JSON response
+            return response()->json($response);
+        }
         
 
 /*public function trends() {
@@ -258,7 +253,7 @@ class UserController extends Controller
     $time_range = isset($_GET['time_range']) ? $_GET['time_range'] : 'default_time_range';
 }*/
 
-public function trends(Request $request) {
+/*public function trends(Request $request) {
     // Check if the device ID is provided
     if (!$request->has('device_id')) {
         return response()->json(['error' => 'Device ID is missing'], 400);
@@ -288,8 +283,30 @@ public function trends(Request $request) {
 
     // Return JSON response
     return response()->json($response);
-}
+}*/
 
+public function trends(Request $request) {
+    // Retrieve readings within the specified time range
+    $startTime = $request->input('start_time');
+    $endTime = $request->input('end_time');
+
+    $readings = DB::table('readings')
+        ->whereBetween('created_at', [$startTime, $endTime]) 
+        ->orderBy('created_at')
+        ->get();
+
+    // Format data into JSON response
+    $chartData = [];
+    foreach ($readings as $reading) {
+        $chartData[] = [
+            "timestamp" => $reading->created_at,
+            "value" => $reading->value,
+        ];
+    }
+
+    // Return JSON response
+    return response()->json(["chartData" => $chartData]);
+}
 
 
 
